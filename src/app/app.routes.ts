@@ -1,3 +1,5 @@
 import { Routes } from '@angular/router';
-
-export const routes: Routes = [];
+import { BudgetspreadsheetComponent } from './budgetspreadsheet/budgetspreadsheet.component';
+export const routes: Routes = [
+    {path:"spreadsheet",component:BudgetspreadsheetComponent,pathMatch: 'full'},
+];

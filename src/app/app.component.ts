@@ -4,6 +4,7 @@ import { KENDO_TOOLBAR } from '@progress/kendo-angular-toolbar';
 import '@angular/localize/init';
 import { SpreadsheetModule } from '@progress/kendo-angular-spreadsheet';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-root',

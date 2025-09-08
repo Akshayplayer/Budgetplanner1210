@@ -15,8 +15,24 @@ export class MyservicesService {
     return this.myhttpclient.get<BudgetExtends[]>(this.baseUrl + "/GetAllBudget");
   }
 
-  saveData(data: BudgetExtends[]) {
+  saveData(data: BudgetExtends) {
     return this.myhttpclient.post(this.baseUrl+"/AddBudget", data);
+  }
+
+  getProjects(): Observable<any> {
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetProjectNames");
+  }
+
+  getEmployees(): Observable<any> {
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetEmployeeNames");
+  }
+
+  getMonths(): Observable<any> {
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetMonths");
+  }
+
+  getStatuses(): Observable<any> {
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetStatusNames");
   }
 
 }

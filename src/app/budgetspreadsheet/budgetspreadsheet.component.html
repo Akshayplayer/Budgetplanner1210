@@ -1,1 +1,20 @@
-<kendo-spreadsheet *ngIf="workbook.length" [sheets]="workbook"></kendo-spreadsheet>
+<div class="spreadsheet-container">
+  <!-- Toolbar -->
+  <div class="toolbar flex gap-2 mb-3">
+    <!-- Edit toggle -->
+    <button kendoButton (click)="toggleEdit()" themeColor="primary" [svgIcon]="isEditable ? lockSvg : editSvg">
+      {{ isEditable ? 'Lock Sheet' : 'Edit Sheet' }}
+    </button>
+
+    <!-- Save new rows -->
+    <button kendoButton (click)="saveData()" themeColor="success" [svgIcon]="saveSvg" [disabled]="!isEditable">
+      Save Data
+    </button>
+  </div>
+
+  <!-- Spreadsheet -->
+  <kendo-spreadsheet #spreadsheet [sheets]="workbook.sheets" (change)="onSheetChange($event)"
+    style="height: 600px; width: 100%;">
+  </kendo-spreadsheet>
+
+</div>

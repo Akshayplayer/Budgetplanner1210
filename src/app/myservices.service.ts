@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../src/app/environments/environment';
 import { Observable } from 'rxjs';
-import { BudgetExtends } from './budgetresource';
+import { BudgetExtends, BudgetResource } from './budgetresource';
 @Injectable({
   providedIn: 'root'
 })
@@ -15,24 +15,24 @@ export class MyservicesService {
     return this.myhttpclient.get<BudgetExtends[]>(this.baseUrl + "/GetAllBudget");
   }
 
-  saveData(data: BudgetExtends) {
+  saveData(data: BudgetResource) {
     return this.myhttpclient.post(this.baseUrl+"/AddBudget", data);
   }
 
   getProjects(): Observable<any> {
-    return this.myhttpclient.get<any>(this.baseUrl + "/GetProjectNames");
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetAllProjects");
   }
 
   getEmployees(): Observable<any> {
-    return this.myhttpclient.get<any>(this.baseUrl + "/GetEmployeeNames");
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetAllEmployees");
   }
 
   getMonths(): Observable<any> {
-    return this.myhttpclient.get<any>(this.baseUrl + "/GetMonths");
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetAllMonths");
   }
 
   getStatuses(): Observable<any> {
-    return this.myhttpclient.get<any>(this.baseUrl + "/GetStatusNames");
+    return this.myhttpclient.get<any>(this.baseUrl + "/GetAllStatus");
   }
 
 }

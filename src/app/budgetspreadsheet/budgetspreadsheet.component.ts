@@ -6,7 +6,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { ButtonsModule } from '@progress/kendo-angular-buttons';
 import { MyservicesService } from '../myservices.service';
-import { BudgetExtends } from '../budgetresource';
+import { BudgetExtends, BudgetResource } from '../budgetresource';
 import { SVGIcon, pencilIcon, saveIcon, lockIcon } from '@progress/kendo-svg-icons';
 import { forkJoin } from 'rxjs';
 import { WorkbookModel } from '../model';
@@ -21,14 +21,14 @@ export class BudgetspreadsheetComponent {
   @ViewChild('spreadsheet', { static: false }) spreadsheet!: KendoSpreadsheetComponent;
 
   workbook: WorkbookModel = {
-  sheets: [
-    {
-      name: 'Budget',
-      rows: [],
-      columns: Array(9).fill({ width: 150 }),
-    },
-  ],
-};
+    sheets: [
+      {
+        name: 'Budget',
+        rows: [],
+        columns: Array(9).fill({ width: 150 }),
+      },
+    ],
+  };
 
   public editSvg: SVGIcon = pencilIcon;
   public saveSvg: SVGIcon = saveIcon;
@@ -37,45 +37,61 @@ export class BudgetspreadsheetComponent {
   // dropdown sources
   months: string[] = [];
   statuses: string[] = [];
+  projects:string[] = [];
+  employees:string[] = [];
 
   budgetPlans: BudgetExtends[] = [];
 
   isEditable = false;
   latestSheetJson: any;
 
-  constructor(private myservice: MyservicesService, private cdr: ChangeDetectorRef) {}
+  constructor(private myservice: MyservicesService, private cdr: ChangeDetectorRef) { }
 
   ngOnInit(): void {
     this.loadDropdowns();
   }
 
   /** Load dropdowns + budget data */
-  loadDropdowns() {    
-    this.myservice.getMonths().subscribe((months) => {
-      this.months = months.map((m: any) => m.name);
+  public async loadDropdowns() {
+    this.myservice.getProjects().subscribe((projects) => {
+      this.projects = projects.map((p: any) => p.name);
 
-      this.myservice.getStatuses().subscribe((statuses) => {
-        this.statuses = statuses.map((s: any) => s.name);
+      this.myservice.getEmployees().subscribe((employees) => {
+        this.employees = employees.map((e: any) => e.name);
 
-        this.myservice.getdata().subscribe({
-          next: (res: BudgetExtends[]) => {
-            this.budgetPlans = res;
-            this.setupSpreadsheet(this.budgetPlans, this.months);
-          },
-          error: (err) => console.error(err),
+        this.myservice.getMonths().subscribe((months) => {
+          this.months = months.map((m: any) => m.name);
+
+          this.myservice.getStatuses().subscribe((statuses) => {
+            this.statuses = statuses.map((s: any) => s.name);
+
+            this.myservice.getdata().subscribe({
+              next: (res: BudgetExtends[]) => {
+                this.budgetPlans = res;
+                this.setupSpreadsheet(
+                  this.budgetPlans,
+                  this.projects,
+                  this.employees,
+                  this.months,
+                  this.statuses
+                );
+              }
+            });
+          });
         });
       });
     });
+
   }
   //working
 
   toggleEdit() {
     this.isEditable = !this.isEditable;
-    this.setupSpreadsheet(this.budgetPlans, this.months);
+    this.setupSpreadsheet(this.budgetPlans, this.projects,this.employees, this.months, this.statuses);
   }
 
   /** Build spreadsheet */
-  setupSpreadsheet(budgetPlans: BudgetExtends[], monthNames: string[]) {
+  setupSpreadsheet(budgetPlans: BudgetExtends[], projectNames: string[], employeeNames: string[], monthNames: string[], statuses: string[]) {
     const labelRow = {
       type: 'header',
       cells: [
@@ -96,10 +112,10 @@ export class BudgetspreadsheetComponent {
       return {
         cells: [
           { value: item.budgetPlanId, enable: false },
-          this.createTextCell(item.projectName, allowEdit),
-          this.createTextCell(item.employeeName, allowEdit),
+          this.createDropdownCell(item.projectName,projectNames, allowEdit),
+          this.createDropdownCell(item.employeeName,employeeNames, allowEdit),
           this.createDropdownCell(item.month, monthNames, allowEdit),
-          this.createDropdownCell(item.statusName, this.statuses, allowEdit),
+          this.createDropdownCell(item.statusName, statuses, allowEdit),
           this.createTextCell(item.budgetAllocated, allowEdit),
           this.createTextCell(item.hoursPlanned, allowEdit),
           { value: item.cost, enable: false },
@@ -111,8 +127,8 @@ export class BudgetspreadsheetComponent {
     const emptyRow = {
       cells: [
         { value: '', enable: false },
-        this.createTextCell('', true),
-        this.createTextCell('', true),
+        this.createDropdownCell('', projectNames, true),
+        this.createDropdownCell('', employeeNames, true),
         this.createDropdownCell('', monthNames, true),
         this.createDropdownCell('', this.statuses, true),
         this.createTextCell('', true),
@@ -158,10 +174,10 @@ export class BudgetspreadsheetComponent {
     if (!this.latestSheetJson) return;
 
     const rows = this.latestSheetJson.rows;
-    const newPlans: BudgetExtends[] = [];
+    const newPlans: BudgetResource[] = [];
 
     // skip header row (0)
-    for (let i = 1; i < rows.length; i++) {
+    for (let i = this.budgetPlans.length+1; i < rows.length; i++) {
       const cells = rows[i]?.cells;
       if (!cells) continue;
 
@@ -173,14 +189,12 @@ export class BudgetspreadsheetComponent {
       if (!budgetPlanId && projectName && employeeName) {
         newPlans.push({
           budgetPlanId: 0,
-          projectName,
-          employeeName,
-          month: cells[3]?.value || '',
-          statusName: cells[4]?.value || '',
+          projectId: Number(cells[1]?.value) || 0,
+          employeeId: Number(cells[2]?.value) || 0,
+          monthId: Number(cells[3]?.value) || 0,
+          statusId: Number(cells[4]?.value) || 0,
           budgetAllocated: Number(cells[5]?.value) || 0,
           hoursPlanned: Number(cells[6]?.value) || 0,
-          cost: Number(cells[7]?.value) || 0,
-          comments: cells[8]?.value || '',
         });
       }
     }
@@ -215,21 +229,21 @@ export class BudgetspreadsheetComponent {
   private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
     return allowEdit
       ? {
-          value,
-          background: '#fef0cd',
-          validation: {
-            dataType: 'list',
-            showButton: true,
-            comparerType: 'list',
-            from: `"${list.join(',')}"`,
-            allowNulls: true,
-            type: 'reject',
-          },
-        }
+        value,
+        background: '#fef0cd',
+        validation: {
+          dataType: 'list',
+          showButton: true,
+          comparerType: 'list',
+          from: `"${list.join(',')}"`,
+          allowNulls: true,
+          type: 'reject',
+        },
+      }
       : {
-          value,
-          background: '#f0f0f0',
-          locked: true,
-        };
+        value,
+        background: '#f0f0f0',
+        locked: true,
+      };
   }
 }

@@ -19,6 +19,7 @@ import { WorkbookModel } from '../model';
   styleUrls: ['./budgetspreadsheet.component.scss']
 })
 export class BudgetspreadsheetComponent {
+
   @ViewChild('spreadsheet', { static: false }) spreadsheet!: KendoSpreadsheetComponent;
 
   workbook: WorkbookModel = {
@@ -43,7 +44,7 @@ export class BudgetspreadsheetComponent {
 
   budgetPlans: BudgetExtends[] = [];
 
-  isEditable = false;
+  isEditable = true;
   latestSheetJson: any;
 
   constructor(private myservice: MyservicesService, private cdr: ChangeDetectorRef) { }
@@ -122,7 +123,8 @@ export class BudgetspreadsheetComponent {
       };
     });
 
-    const emptyRow = {
+    // Generate N empty rows
+    const emptyRows = Array.from({ length: 10 }).map(() => ({
       cells: [
         { value: '', enable: false },
         this.createDropdownCell('', projects.map(p => p.name), true),
@@ -134,13 +136,14 @@ export class BudgetspreadsheetComponent {
         { value: '', enable: false },
         this.createTextCell('', true),
       ],
-    };
+    }));
+
 
     this.workbook = {
       sheets: [
         {
           name: 'Budget',
-          rows: [labelRow, ...dataRows, emptyRow],
+          rows: [labelRow, ...dataRows, ...emptyRows],
           columns: Array(9).fill({ width: 150 }),
           protection: {
             protected: true,
@@ -173,9 +176,10 @@ export class BudgetspreadsheetComponent {
 
     const rows = this.latestSheetJson.rows;
     const newPlans: BudgetResource[] = [];
+    const oldplans: BudgetResource[] = [];
 
     // skip header row (0)
-    for (let i = this.budgetPlans.length + 1; i < rows.length; i++) {
+    for (let i = 1; i < rows.length; i++) {
       const cells = rows[i]?.cells;
       if (!cells) continue;
 
@@ -186,32 +190,47 @@ export class BudgetspreadsheetComponent {
       const statusName = cells[4]?.value || '';
 
       // only add if no id and required fields filled
-      if (!budgetPlanId && projectName && employeeName) {
-        const project = this.projects.find(p => p.name === projectName);
-        const employee = this.employees.find(e => e.name === employeeName);
-        const month = this.months.find(m => m.name === monthName);
-        const status = this.statuses.find(s => s.name === statusName);
+      if (projectName && employeeName) {
+        if (!budgetPlanId) {
+          const project = this.projects.find(p => p.name === projectName);
+          const employee = this.employees.find(e => e.name === employeeName);
+          const month = this.months.find(m => m.name === monthName);
+          const status = this.statuses.find(s => s.name === statusName);
 
-        newPlans.push({
-          budgetPlanId: 0,
-          projectId: project?.id || 0,
-          employeeId: employee?.id || 0,
-          monthId: month?.id || 0,
-          statusId: status?.id || 0,
-          budgetAllocated: Number(cells[5]?.value) || 0,
-          hoursPlanned: Number(cells[6]?.value) || 0,
-          comments: cells[8]?.value || '',
-        });
+          newPlans.push({
+            budgetPlanId: 0,
+            projectId: project?.id || 0,
+            employeeId: employee?.id || 0,
+            monthId: month?.id || 0,
+            statusId: status?.id || 0,
+            budgetAllocated: Number(cells[5]?.value) || 0,
+            hoursPlanned: Number(cells[6]?.value) || 0,
+            comments: cells[8]?.value || '',
+          });
+        }
+        else {
+          oldplans.push({
+            budgetPlanId: budgetPlanId,
+            projectId: this.projects.find(p => p.name === projectName)?.id || 0,
+            employeeId: this.employees.find(e => e.name === employeeName)?.id || 0,
+            monthId: this.months.find(m => m.name === monthName)?.id || 0,
+            statusId: this.statuses.find(s => s.name === statusName)?.id || 0,
+            budgetAllocated: Number(cells[5]?.value) || 0,
+            hoursPlanned: Number(cells[6]?.value) || 0,
+            comments: cells[8]?.value || '',
+          });
+        }
       }
     }
 
-    if (newPlans.length === 0) {
-      console.log('No new rows to save');
+    if (newPlans.length === 0 && oldplans.length === 0) {
+      console.log('No new rows to save and change');
       return;
     }
 
     // save each row sequentially
     const requests = newPlans.map((plan) => this.myservice.saveData(plan));
+    requests.push(...oldplans.map((plan) => this.myservice.updateData(plan)));
 
     forkJoin(requests).subscribe({
       next: () => {
@@ -235,21 +254,21 @@ export class BudgetspreadsheetComponent {
   private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
     return allowEdit
       ? {
-          value,
-          background: '#fef0cd',
-          validation: {
-            dataType: 'list',
-            showButton: true,
-            comparerType: 'list',
-            from: `"${list.join(',')}"`,
-            allowNulls: true,
-            type: 'reject',
-          },
-        }
+        value,
+        background: '#fef0cd',
+        validation: {
+          dataType: 'list',
+          showButton: true,
+          comparerType: 'list',
+          from: `"${list.join(',')}"`,
+          allowNulls: true,
+          type: 'reject',
+        },
+      }
       : {
-          value,
-          background: '#f0f0f0',
-          locked: true,
-        };
+        value,
+        background: '#f0f0f0',
+        locked: true,
+      };
   }
 }

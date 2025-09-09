@@ -19,6 +19,10 @@ export class MyservicesService {
     return this.myhttpclient.post(this.baseUrl+"/AddBudget", data);
   }
 
+  updateData(data: BudgetResource) {
+    return this.myhttpclient.put(this.baseUrl+"/Update", data);
+  }
+
   getProjects(): Observable<any> {
     return this.myhttpclient.get<any>(this.baseUrl + "/GetAllProjects");
   }

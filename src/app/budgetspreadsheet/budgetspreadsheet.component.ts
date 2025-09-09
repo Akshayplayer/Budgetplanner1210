@@ -10,6 +10,7 @@ import { BudgetExtends, BudgetResource } from '../budgetresource';
 import { SVGIcon, pencilIcon, saveIcon, lockIcon } from '@progress/kendo-svg-icons';
 import { forkJoin } from 'rxjs';
 import { WorkbookModel } from '../model';
+
 @Component({
   selector: 'app-budgetspreadsheet',
   standalone: true,
@@ -34,11 +35,11 @@ export class BudgetspreadsheetComponent {
   public saveSvg: SVGIcon = saveIcon;
   public lockSvg: SVGIcon = lockIcon;
 
-  // dropdown sources
-  months: string[] = [];
-  statuses: string[] = [];
-  projects:string[] = [];
-  employees:string[] = [];
+  // dropdown sources (keep full objects with id + name)
+  months: { id: number; name: string }[] = [];
+  statuses: { id: number; name: string }[] = [];
+  projects: { id: number; name: string }[] = [];
+  employees: { id: number; name: string }[] = [];
 
   budgetPlans: BudgetExtends[] = [];
 
@@ -52,46 +53,43 @@ export class BudgetspreadsheetComponent {
   }
 
   /** Load dropdowns + budget data */
-  public async loadDropdowns() {
-    this.myservice.getProjects().subscribe((projects) => {
-      this.projects = projects.map((p: any) => p.name);
+  public loadDropdowns() {
+    forkJoin({
+      projects: this.myservice.getProjects(),
+      employees: this.myservice.getEmployees(),
+      months: this.myservice.getMonths(),
+      statuses: this.myservice.getStatuses(),
+      data: this.myservice.getdata()
+    }).subscribe(({ projects, employees, months, statuses, data }) => {
+      this.projects = projects;
+      this.employees = employees;
+      this.months = months;
+      this.statuses = statuses;
+      this.budgetPlans = data;
 
-      this.myservice.getEmployees().subscribe((employees) => {
-        this.employees = employees.map((e: any) => e.name);
-
-        this.myservice.getMonths().subscribe((months) => {
-          this.months = months.map((m: any) => m.name);
-
-          this.myservice.getStatuses().subscribe((statuses) => {
-            this.statuses = statuses.map((s: any) => s.name);
-
-            this.myservice.getdata().subscribe({
-              next: (res: BudgetExtends[]) => {
-                this.budgetPlans = res;
-                this.setupSpreadsheet(
-                  this.budgetPlans,
-                  this.projects,
-                  this.employees,
-                  this.months,
-                  this.statuses
-                );
-              }
-            });
-          });
-        });
-      });
+      this.setupSpreadsheet(
+        this.budgetPlans,
+        this.projects,
+        this.employees,
+        this.months,
+        this.statuses
+      );
     });
-
   }
-  //working
 
   toggleEdit() {
     this.isEditable = !this.isEditable;
-    this.setupSpreadsheet(this.budgetPlans, this.projects,this.employees, this.months, this.statuses);
+    this.setupSpreadsheet(this.budgetPlans, this.projects, this.employees, this.months, this.statuses);
   }
 
   /** Build spreadsheet */
-  setupSpreadsheet(budgetPlans: BudgetExtends[], projectNames: string[], employeeNames: string[], monthNames: string[], statuses: string[]) {
+  setupSpreadsheet(
+    budgetPlans: BudgetExtends[],
+    projects: { id: number; name: string }[],
+    employees: { id: number; name: string }[],
+    months: { id: number; name: string }[],
+    statuses: { id: number; name: string }[]
+  ) {
     const labelRow = {
       type: 'header',
       cells: [
@@ -112,10 +110,10 @@ export class BudgetspreadsheetComponent {
       return {
         cells: [
           { value: item.budgetPlanId, enable: false },
-          this.createDropdownCell(item.projectName,projectNames, allowEdit),
-          this.createDropdownCell(item.employeeName,employeeNames, allowEdit),
-          this.createDropdownCell(item.month, monthNames, allowEdit),
-          this.createDropdownCell(item.statusName, statuses, allowEdit),
+          this.createDropdownCell(item.projectName, projects.map(p => p.name), allowEdit),
+          this.createDropdownCell(item.employeeName, employees.map(e => e.name), allowEdit),
+          this.createDropdownCell(item.month, months.map(m => m.name), allowEdit),
+          this.createDropdownCell(item.statusName, statuses.map(s => s.name), allowEdit),
           this.createTextCell(item.budgetAllocated, allowEdit),
           this.createTextCell(item.hoursPlanned, allowEdit),
           { value: item.cost, enable: false },
@@ -127,10 +125,10 @@ export class BudgetspreadsheetComponent {
     const emptyRow = {
       cells: [
         { value: '', enable: false },
-        this.createDropdownCell('', projectNames, true),
-        this.createDropdownCell('', employeeNames, true),
-        this.createDropdownCell('', monthNames, true),
-        this.createDropdownCell('', this.statuses, true),
+        this.createDropdownCell('', projects.map(p => p.name), true),
+        this.createDropdownCell('', employees.map(e => e.name), true),
+        this.createDropdownCell('', months.map(m => m.name), true),
+        this.createDropdownCell('', statuses.map(s => s.name), true),
         this.createTextCell('', true),
         this.createTextCell('', true),
         { value: '', enable: false },
@@ -177,24 +175,32 @@ export class BudgetspreadsheetComponent {
     const newPlans: BudgetResource[] = [];
 
     // skip header row (0)
-    for (let i = this.budgetPlans.length+1; i < rows.length; i++) {
+    for (let i = this.budgetPlans.length + 1; i < rows.length; i++) {
       const cells = rows[i]?.cells;
       if (!cells) continue;
 
       const budgetPlanId = cells[0]?.value;
       const projectName = cells[1]?.value || '';
       const employeeName = cells[2]?.value || '';
+      const monthName = cells[3]?.value || '';
+      const statusName = cells[4]?.value || '';
 
-      // new row if no id and required fields filled
+      // only add if no id and required fields filled
       if (!budgetPlanId && projectName && employeeName) {
+        const project = this.projects.find(p => p.name === projectName);
+        const employee = this.employees.find(e => e.name === employeeName);
+        const month = this.months.find(m => m.name === monthName);
+        const status = this.statuses.find(s => s.name === statusName);
+
         newPlans.push({
           budgetPlanId: 0,
-          projectId: Number(cells[1]?.value) || 0,
-          employeeId: Number(cells[2]?.value) || 0,
-          monthId: Number(cells[3]?.value) || 0,
-          statusId: Number(cells[4]?.value) || 0,
+          projectId: project?.id || 0,
+          employeeId: employee?.id || 0,
+          monthId: month?.id || 0,
+          statusId: status?.id || 0,
           budgetAllocated: Number(cells[5]?.value) || 0,
           hoursPlanned: Number(cells[6]?.value) || 0,
+          comments: cells[8]?.value || '',
         });
       }
     }
@@ -229,21 +235,21 @@ export class BudgetspreadsheetComponent {
   private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
     return allowEdit
       ? {
-        value,
-        background: '#fef0cd',
-        validation: {
-          dataType: 'list',
-          showButton: true,
-          comparerType: 'list',
-          from: `"${list.join(',')}"`,
-          allowNulls: true,
-          type: 'reject',
-        },
-      }
+          value,
+          background: '#fef0cd',
+          validation: {
+            dataType: 'list',
+            showButton: true,
+            comparerType: 'list',
+            from: `"${list.join(',')}"`,
+            allowNulls: true,
+            type: 'reject',
+          },
+        }
       : {
-        value,
-        background: '#f0f0f0',
-        locked: true,
-      };
+          value,
+          background: '#f0f0f0',
+          locked: true,
+        };
   }
 }

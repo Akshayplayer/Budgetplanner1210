@@ -6,6 +6,7 @@ export interface BudgetResource {
     statusId?: number;
     budgetAllocated: number;
     hoursPlanned: number;
+    comments: string;
 }
 export interface BudgetExtends extends BudgetResource {
     projectName: string;
@@ -13,5 +14,4 @@ export interface BudgetExtends extends BudgetResource {
     month: string;
     statusName: string;
     cost: number;
-    comments: string;
 }

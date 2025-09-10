@@ -111,33 +111,32 @@ export class BudgetspreadsheetComponent {
       return {
         cells: [
           { value: item.budgetPlanId, enable: false },
-          this.createDropdownCell(item.projectName, projects.map(p => p.name), allowEdit),
-          this.createDropdownCell(item.employeeName, employees.map(e => e.name), allowEdit),
-          this.createDropdownCell(item.month, months.map(m => m.name), allowEdit),
-          this.createDropdownCell(item.statusName, statuses.map(s => s.name), allowEdit),
-          this.createTextCell(item.budgetAllocated, allowEdit),
-          this.createTextCell(item.hoursPlanned, allowEdit),
-          { value: item.cost, enable: false },
+          this.createDropdownCell(item.projectName, projects.map(p => p.name), allowEdit, true),
+          this.createDropdownCell(item.employeeName, employees.map(e => e.name), allowEdit, true),
+          this.createDropdownCell(item.month, months.map(m => m.name), allowEdit, true),
+          this.createDropdownCell(item.statusName, statuses.map(s => s.name), allowEdit, true),
+          this.createNumberCell(item.budgetAllocated, allowEdit, 1, 100000),
+          this.createNumberCell(item.hoursPlanned, allowEdit, 0, 1000000),
+          this.createNumberCell(item.cost, false, 0, 1000000), // cost locked
           this.createTextCell(item.comments, allowEdit),
         ],
       };
     });
 
     // Generate N empty rows
-    const emptyRows = Array.from({ length: 10 }).map(() => ({
+    const emptyRows = Array.from({ length: 1000 }).map(() => ({
       cells: [
         { value: '', enable: false },
-        this.createDropdownCell('', projects.map(p => p.name), true),
-        this.createDropdownCell('', employees.map(e => e.name), true),
-        this.createDropdownCell('', months.map(m => m.name), true),
-        this.createDropdownCell('', statuses.map(s => s.name), true),
-        this.createTextCell('', true),
-        this.createTextCell('', true),
-        { value: '', enable: false },
+        this.createDropdownCell('', projects.map(p => p.name), true, true),
+        this.createDropdownCell('', employees.map(e => e.name), true, true),
+        this.createDropdownCell('', months.map(m => m.name), true, true),
+        this.createDropdownCell('', statuses.map(s => s.name), true, true),
+        this.createNumberCell('', true, 1, 100000),
+        this.createNumberCell('', true, 0, 1000000),
+        this.createNumberCell('', false, 0, 1000000),
         this.createTextCell('', true),
       ],
     }));
-
 
     this.workbook = {
       sheets: [
@@ -171,76 +170,105 @@ export class BudgetspreadsheetComponent {
   }
 
   /** Save newly added rows (API takes one row at a time) */
-  saveData() {
-    if (!this.latestSheetJson) return;
+/** Save newly added rows (API takes one row at a time) */
+saveData() {
+  if (!this.latestSheetJson) return;
 
-    const rows = this.latestSheetJson.rows;
-    const newPlans: BudgetResource[] = [];
-    const oldplans: BudgetResource[] = [];
+  const rows = this.latestSheetJson.rows;
+  const newPlans: BudgetResource[] = [];
+  const oldplans: BudgetResource[] = [];
+  let hasErrors = false;
 
-    // skip header row (0)
-    for (let i = 1; i < rows.length; i++) {
-      const cells = rows[i]?.cells;
-      if (!cells) continue;
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i]?.cells;
+    if (!cells) continue;
 
-      const budgetPlanId = cells[0]?.value;
-      const projectName = cells[1]?.value || '';
-      const employeeName = cells[2]?.value || '';
-      const monthName = cells[3]?.value || '';
-      const statusName = cells[4]?.value || '';
+    const budgetPlanId = cells[0]?.value;
+    const projectName = cells[1]?.value || '';
+    const employeeName = cells[2]?.value || '';
+    const monthName = cells[3]?.value || '';
+    const statusName = cells[4]?.value || '';
+    const budgetAllocated = Number(cells[5]?.value) || 0;
+    const hoursPlanned = Number(cells[6]?.value) || 0;
 
-      // only add if no id and required fields filled
-      if (projectName && employeeName) {
-        if (!budgetPlanId) {
-          const project = this.projects.find(p => p.name === projectName);
-          const employee = this.employees.find(e => e.name === employeeName);
-          const month = this.months.find(m => m.name === monthName);
-          const status = this.statuses.find(s => s.name === statusName);
+    // ✅ check if row is completely empty → skip it
+    const isRowEmpty =
+      !projectName && !employeeName && !monthName && !statusName &&
+      !budgetAllocated && !hoursPlanned && !(cells[8]?.value);
 
-          newPlans.push({
-            budgetPlanId: 0,
-            projectId: project?.id || 0,
-            employeeId: employee?.id || 0,
-            monthId: month?.id || 0,
-            statusId: status?.id || 0,
-            budgetAllocated: Number(cells[5]?.value) || 0,
-            hoursPlanned: Number(cells[6]?.value) || 0,
-            comments: cells[8]?.value || '',
-          });
-        }
-        else {
-          oldplans.push({
-            budgetPlanId: budgetPlanId,
-            projectId: this.projects.find(p => p.name === projectName)?.id || 0,
-            employeeId: this.employees.find(e => e.name === employeeName)?.id || 0,
-            monthId: this.months.find(m => m.name === monthName)?.id || 0,
-            statusId: this.statuses.find(s => s.name === statusName)?.id || 0,
-            budgetAllocated: Number(cells[5]?.value) || 0,
-            hoursPlanned: Number(cells[6]?.value) || 0,
-            comments: cells[8]?.value || '',
-          });
-        }
-      }
+    if (isRowEmpty) continue;
+
+    // ✅ validate only non-empty rows
+    if (!projectName || !employeeName || !monthName || !statusName) {
+      alert(`Row ${i + 1}: Missing required dropdowns`);
+      hasErrors = true;
+      continue;
+    }
+    if (budgetAllocated <= 0) {
+      alert(`Row ${i + 1}: Budget Allocated must be > 0`);
+      hasErrors = true;
+      continue;
+    }
+    if (hoursPlanned < 0) {
+      alert(`Row ${i + 1}: Hours Planned cannot be negative`);
+      hasErrors = true;
+      continue;
     }
 
-    if (newPlans.length === 0 && oldplans.length === 0) {
-      console.log('No new rows to save and change');
-      return;
+    if (!budgetPlanId) {
+      const project = this.projects.find(p => p.name === projectName);
+      const employee = this.employees.find(e => e.name === employeeName);
+      const month = this.months.find(m => m.name === monthName);
+      const status = this.statuses.find(s => s.name === statusName);
+
+      newPlans.push({
+        budgetPlanId: 0,
+        projectId: project?.id || 0,
+        employeeId: employee?.id || 0,
+        monthId: month?.id || 0,
+        statusId: status?.id || 0,
+        budgetAllocated,
+        hoursPlanned,
+        comments: cells[8]?.value || '',
+      });
+    } else {
+      oldplans.push({
+        budgetPlanId: budgetPlanId,
+        projectId: this.projects.find(p => p.name === projectName)?.id || 0,
+        employeeId: this.employees.find(e => e.name === employeeName)?.id || 0,
+        monthId: this.months.find(m => m.name === monthName)?.id || 0,
+        statusId: this.statuses.find(s => s.name === statusName)?.id || 0,
+        budgetAllocated,
+        hoursPlanned,
+        comments: cells[8]?.value || '',
+      });
     }
-
-    // save each row sequentially
-    const requests = newPlans.map((plan) => this.myservice.saveData(plan));
-    requests.push(...oldplans.map((plan) => this.myservice.updateData(plan)));
-
-    forkJoin(requests).subscribe({
-      next: () => {
-        console.log('Saved all new rows:', newPlans);
-        this.isEditable = false;
-        this.loadDropdowns();
-      },
-      error: (err) => console.error('Save error:', err),
-    });
   }
+
+  if (hasErrors) {
+    console.warn("Fix validation errors before saving");
+    return;
+  }
+
+  if (newPlans.length === 0 && oldplans.length === 0) {
+    console.log('No new rows to save or update');
+    return;
+  }
+
+  const requests = [
+    ...newPlans.map(plan => this.myservice.saveData(plan)),
+    ...oldplans.map(plan => this.myservice.updateData(plan))
+  ];
+
+  forkJoin(requests).subscribe({
+    next: () => {
+      console.log('Saved successfully:', [...newPlans, ...oldplans]);
+      this.isEditable = false;
+      this.loadDropdowns();
+    },
+    error: (err) => console.error('Save error:', err),
+  });
+}
 
   /** Cell helpers */
   private createTextCell(value: any, allowEdit: boolean) {
@@ -251,24 +279,43 @@ export class BudgetspreadsheetComponent {
     };
   }
 
-  private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
+  private createNumberCell(value: any, allowEdit: boolean, min: number, max: number) {
+    return {
+      value,
+      background: allowEdit ? '#fff' : '#fef0f0',
+      locked: !allowEdit,
+      validation: allowEdit
+        ? {
+            dataType: 'number',
+            comparerType: 'between',
+            from: min,
+            to: max,
+            type: 'reject',
+            messageTemplate: `Value must be between ${min} and ${max}`,
+          }
+        : undefined,
+    };
+  }
+
+  private createDropdownCell(value: any, list: string[], allowEdit: boolean, required = false) {
     return allowEdit
       ? {
-        value,
-        background: '#fef0cd',
-        validation: {
-          dataType: 'list',
-          showButton: true,
-          comparerType: 'list',
-          from: `"${list.join(',')}"`,
-          allowNulls: true,
-          type: 'reject',
-        },
-      }
+          value,
+          background: '#fef0cd',
+          validation: {
+            dataType: 'list',
+            showButton: true,
+            comparerType: 'list',
+            from: `"${list.join(',')}"`,
+            allowNulls: !required,
+            type: 'reject',
+            messageTemplate: required ? "This field is required" : "Select from dropdown",
+          },
+        }
       : {
-        value,
-        background: '#f0f0f0',
-        locked: true,
-      };
+          value,
+          background: '#f0f0f0',
+          locked: true,
+        };
   }
 }

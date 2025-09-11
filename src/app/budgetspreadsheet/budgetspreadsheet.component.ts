@@ -10,6 +10,7 @@ import { BudgetExtends, BudgetResource } from '../budgetresource';
 import { SVGIcon, pencilIcon, saveIcon, lockIcon } from '@progress/kendo-svg-icons';
 import { forkJoin } from 'rxjs';
 import { WorkbookModel } from '../model';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-budgetspreadsheet',
@@ -52,6 +53,7 @@ export class BudgetspreadsheetComponent {
   ngOnInit(): void {
     this.loadDropdowns();
   }
+
 
   /** Load dropdowns + budget data */
   public loadDropdowns() {
@@ -103,6 +105,7 @@ export class BudgetspreadsheetComponent {
         { value: 'Hours Planned', bold: true },
         { value: 'Cost', bold: true },
         { value: 'Comments', bold: true },
+        { value: 'Delete?', bold: true },
       ],
     };
 
@@ -111,14 +114,16 @@ export class BudgetspreadsheetComponent {
       return {
         cells: [
           { value: item.budgetPlanId, enable: false },
-          this.createDropdownCell(item.projectName, projects.map(p => p.name), allowEdit, true),
-          this.createDropdownCell(item.employeeName, employees.map(e => e.name), allowEdit, true),
-          this.createDropdownCell(item.month, months.map(m => m.name), allowEdit, true),
-          this.createDropdownCell(item.statusName, statuses.map(s => s.name), allowEdit, true),
-          this.createNumberCell(item.budgetAllocated, allowEdit, 1, 100000),
-          this.createNumberCell(item.hoursPlanned, allowEdit, 0, 1000000),
-          this.createNumberCell(item.cost, false, 0, 1000000), // cost locked
+          this.createDropdownCell(item.projectName, projects.map(p => p.name), allowEdit),
+          this.createDropdownCell(item.employeeName, employees.map(e => e.name), allowEdit),
+          this.createDropdownCell(item.month, months.map(m => m.name), allowEdit),
+          this.createDropdownCell(item.statusName, statuses.map(s => s.name), allowEdit),
+          this.createTextCell(item.budgetAllocated, allowEdit),
+          this.createTextCell(item.hoursPlanned, allowEdit),
+          { value: item.cost, enable: true },
           this.createTextCell(item.comments, allowEdit),
+          this.createTextCell('', true), // ✅ delete column (empty by default)
+
         ],
       };
     });
@@ -127,13 +132,13 @@ export class BudgetspreadsheetComponent {
     const emptyRows = Array.from({ length: 1000 }).map(() => ({
       cells: [
         { value: '', enable: false },
-        this.createDropdownCell('', projects.map(p => p.name), true, true),
-        this.createDropdownCell('', employees.map(e => e.name), true, true),
-        this.createDropdownCell('', months.map(m => m.name), true, true),
-        this.createDropdownCell('', statuses.map(s => s.name), true, true),
-        this.createNumberCell('', true, 1, 100000),
-        this.createNumberCell('', true, 0, 1000000),
-        this.createNumberCell('', false, 0, 1000000),
+        this.createDropdownCell('', projects.map(p => p.name), true),
+        this.createDropdownCell('', employees.map(e => e.name), true),
+        this.createDropdownCell('', months.map(m => m.name), true),
+        this.createDropdownCell('', statuses.map(s => s.name), true),
+        this.createTextCell('', true),
+        this.createTextCell('', true),
+        { value: '', enable: true },
         this.createTextCell('', true),
       ],
     }));
@@ -169,106 +174,99 @@ export class BudgetspreadsheetComponent {
     this.latestSheetJson = sheet.toJSON();
   }
 
-  /** Save newly added rows (API takes one row at a time) */
-/** Save newly added rows (API takes one row at a time) */
-saveData() {
-  if (!this.latestSheetJson) return;
+  /** Save newly added rows (API takes one row at a time) with validation */
+  saveData() {
+    if (!this.latestSheetJson) return;
 
-  const rows = this.latestSheetJson.rows;
-  const newPlans: BudgetResource[] = [];
-  const oldplans: BudgetResource[] = [];
-  let hasErrors = false;
+    const rows = this.latestSheetJson.rows;
+    const newPlans: BudgetResource[] = [];
+    const oldplans: BudgetResource[] = [];
+    const validationErrors: string[] = [];
 
-  for (let i = 1; i < rows.length; i++) {
-    const cells = rows[i]?.cells;
-    if (!cells) continue;
+    for (let i = 1; i < rows.length; i++) {
+      const cells = rows[i]?.cells;
+      if (!cells) continue;
 
-    const budgetPlanId = cells[0]?.value;
-    const projectName = cells[1]?.value || '';
-    const employeeName = cells[2]?.value || '';
-    const monthName = cells[3]?.value || '';
-    const statusName = cells[4]?.value || '';
-    const budgetAllocated = Number(cells[5]?.value) || 0;
-    const hoursPlanned = Number(cells[6]?.value) || 0;
+      const budgetPlanId = this.getCellValue(cells, 0, true);
+      const projectName = this.getCellValue(cells, 1);
+      const employeeName = this.getCellValue(cells, 2);
+      const monthName = this.getCellValue(cells, 3);
+      const statusName = this.getCellValue(cells, 4);
+      const budgetAllocated = this.getCellValue(cells, 5, true);
+      const hoursPlanned = this.getCellValue(cells, 6, true);
+      const comments = this.getCellValue(cells, 8);
 
-    // ✅ check if row is completely empty → skip it
-    const isRowEmpty =
-      !projectName && !employeeName && !monthName && !statusName &&
-      !budgetAllocated && !hoursPlanned && !(cells[8]?.value);
+      if (!projectName && !employeeName && !monthName && !statusName && !budgetAllocated && !hoursPlanned && !comments) {
+        continue;
+      }
+      // 🔴 Validate required dropdowns
+      if (!projectName || !employeeName || !monthName || !statusName) {
+        validationErrors.push(`Row ${i + 1}: Missing required dropdown values.`);
+        continue;
+      }
 
-    if (isRowEmpty) continue;
+      // 🔴 Validate numbers
+      if (isNaN(budgetAllocated) || isNaN(hoursPlanned)) {
+        validationErrors.push(`Row ${i + 1}: Budget Allocated and Hours Planned must be numbers.`);
+        continue;
+      }
 
-    // ✅ validate only non-empty rows
-    if (!projectName || !employeeName || !monthName || !statusName) {
-      alert(`Row ${i + 1}: Missing required dropdowns`);
-      hasErrors = true;
-      continue;
+      if (!budgetPlanId) {
+        const project = this.projects.find(p => p.name === projectName);
+        const employee = this.employees.find(e => e.name === employeeName);
+        const month = this.months.find(m => m.name === monthName);
+        const status = this.statuses.find(s => s.name === statusName);
+
+        newPlans.push({
+          budgetPlanId: 0,
+          projectId: project?.id || 0,
+          employeeId: employee?.id || 0,
+          monthId: month?.id || 0,
+          statusId: status?.id || 0,
+          budgetAllocated,
+          hoursPlanned,
+          comments: this.getCellValue(cells, 8),
+        });
+      } else {
+        oldplans.push({
+          budgetPlanId,
+          projectId: this.projects.find(p => p.name === projectName)?.id || 0,
+          employeeId: this.employees.find(e => e.name === employeeName)?.id || 0,
+          monthId: this.months.find(m => m.name === monthName)?.id || 0,
+          statusId: this.statuses.find(s => s.name === statusName)?.id || 0,
+          budgetAllocated,
+          hoursPlanned,
+          comments: this.getCellValue(cells, 8),
+        });
+      }
     }
-    if (budgetAllocated <= 0) {
-      alert(`Row ${i + 1}: Budget Allocated must be > 0`);
-      hasErrors = true;
-      continue;
-    }
-    if (hoursPlanned < 0) {
-      alert(`Row ${i + 1}: Hours Planned cannot be negative`);
-      hasErrors = true;
-      continue;
+
+    // ❌ Stop if validation failed
+    if (validationErrors.length > 0) {
+      alert("Validation Errors:\n" + validationErrors.join("\n"));
+      return;
     }
 
-    if (!budgetPlanId) {
-      const project = this.projects.find(p => p.name === projectName);
-      const employee = this.employees.find(e => e.name === employeeName);
-      const month = this.months.find(m => m.name === monthName);
-      const status = this.statuses.find(s => s.name === statusName);
-
-      newPlans.push({
-        budgetPlanId: 0,
-        projectId: project?.id || 0,
-        employeeId: employee?.id || 0,
-        monthId: month?.id || 0,
-        statusId: status?.id || 0,
-        budgetAllocated,
-        hoursPlanned,
-        comments: cells[8]?.value || '',
-      });
-    } else {
-      oldplans.push({
-        budgetPlanId: budgetPlanId,
-        projectId: this.projects.find(p => p.name === projectName)?.id || 0,
-        employeeId: this.employees.find(e => e.name === employeeName)?.id || 0,
-        monthId: this.months.find(m => m.name === monthName)?.id || 0,
-        statusId: this.statuses.find(s => s.name === statusName)?.id || 0,
-        budgetAllocated,
-        hoursPlanned,
-        comments: cells[8]?.value || '',
-      });
+    if (newPlans.length === 0 && oldplans.length === 0) {
+      alert('No valid rows to save.');
+      return;
     }
+
+    const requests = newPlans.map((plan) => this.myservice.saveData(plan));
+    requests.push(...oldplans.map((plan) => this.myservice.updateData(plan)));
+
+    forkJoin(requests).subscribe({
+      next: () => {
+        alert('Data saved successfully!');
+        this.isEditable = false;
+        this.loadDropdowns();
+      },
+      error: (err) => {
+        alert('Save failed. Please check your inputs or try again.');
+        console.error('Save error:', err);
+      },
+    });
   }
-
-  if (hasErrors) {
-    console.warn("Fix validation errors before saving");
-    return;
-  }
-
-  if (newPlans.length === 0 && oldplans.length === 0) {
-    console.log('No new rows to save or update');
-    return;
-  }
-
-  const requests = [
-    ...newPlans.map(plan => this.myservice.saveData(plan)),
-    ...oldplans.map(plan => this.myservice.updateData(plan))
-  ];
-
-  forkJoin(requests).subscribe({
-    next: () => {
-      console.log('Saved successfully:', [...newPlans, ...oldplans]);
-      this.isEditable = false;
-      this.loadDropdowns();
-    },
-    error: (err) => console.error('Save error:', err),
-  });
-}
 
   /** Cell helpers */
   private createTextCell(value: any, allowEdit: boolean) {
@@ -279,43 +277,109 @@ saveData() {
     };
   }
 
-  private createNumberCell(value: any, allowEdit: boolean, min: number, max: number) {
-    return {
-      value,
-      background: allowEdit ? '#fff' : '#fef0f0',
-      locked: !allowEdit,
-      validation: allowEdit
-        ? {
-            dataType: 'number',
-            comparerType: 'between',
-            from: min,
-            to: max,
-            type: 'reject',
-            messageTemplate: `Value must be between ${min} and ${max}`,
-          }
-        : undefined,
-    };
-  }
-
-  private createDropdownCell(value: any, list: string[], allowEdit: boolean, required = false) {
+  private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
     return allowEdit
       ? {
-          value,
-          background: '#fef0cd',
-          validation: {
-            dataType: 'list',
-            showButton: true,
-            comparerType: 'list',
-            from: `"${list.join(',')}"`,
-            allowNulls: !required,
-            type: 'reject',
-            messageTemplate: required ? "This field is required" : "Select from dropdown",
-          },
-        }
+        value,
+        background: '#fef0cd',
+        validation: {
+          dataType: 'list',
+          showButton: true,
+          comparerType: 'list',
+          from: `"${list.join(',')}"`,
+          allowNulls: true,
+          type: 'reject',
+        },
+      }
       : {
-          value,
-          background: '#f0f0f0',
-          locked: true,
-        };
+        value,
+        background: '#f0f0f0',
+        locked: true,
+      };
+  }
+
+  /** Safe getter for cleared cells */
+  private getCellValue(cells: any[], index: number): string;
+  private getCellValue(cells: any[], index: number, asNumber: true): number;
+  private getCellValue(cells: any[], index: number, asNumber = false): string | number {
+    if (!cells || !cells[index] || cells[index].value === undefined || cells[index].value === null) {
+      return asNumber ? 0 : '';
+    }
+    return asNumber ? Number(cells[index].value) || 0 : String(cells[index].value);
+  }
+
+  /** Delete selected rows */
+  /** Delete selected rows and sync with backend */
+  /** Delete selected rows and sync with backend */
+  selectedBudgetPlanIds: number[] = [];
+
+  onSelect(e: any): void {
+    try {
+      console.log('🟢 onSelect fired with event:', e);
+
+      const sheet = e.sender.activeSheet();
+      const selection = sheet.selection();
+
+      if (!selection) {
+        console.log('⚠️ No valid selection, clearing IDs');
+        this.selectedBudgetPlanIds = [];
+        return;
+      }
+      console.log(selection);
+
+      const ranges = selection.ranges || [selection]; // could be multiple ranges
+      const ids: number[] = [];
+
+      ranges.forEach((range: any) => {
+        const ref = range._ref;
+        if (!ref?.topLeft || !ref?.bottomRight) return;
+
+        const startRow = ref.topLeft.row;
+        const endRow = ref.bottomRight.row;
+
+        for (let r = startRow; r <= endRow; r++) {
+          if (r === 0) continue; // skip header
+
+          const id = sheet.range(r, 0).value();
+          if (id) ids.push(Number(id));
+        }
+      });
+
+      this.selectedBudgetPlanIds = Array.from(new Set(ids)); // unique
+      console.log('✅ Collected BudgetPlanIds:', this.selectedBudgetPlanIds);
+
+    } catch (err) {
+      console.error('❌ Error in onSelect:', err);
+      this.selectedBudgetPlanIds = [];
+    }
+  }
+
+
+  onDelete() {
+    console.log("🗑️ Attempting delete. Selected IDs:", this.selectedBudgetPlanIds);
+
+    if (!this.selectedBudgetPlanIds || this.selectedBudgetPlanIds.length === 0) {
+      console.warn("⚠️ No valid BudgetPlanId selected for deletion.");
+
+      return;
+    }
+
+    const requests = this.selectedBudgetPlanIds.map(budgetPlanId => {
+      console.log("➡️ Sending delete request for BudgetPlanId:", budgetPlanId);
+      return this.myservice.deleteData(budgetPlanId);
+    });
+
+    forkJoin(requests).subscribe({
+      next: (res) => {
+        console.log("✅ Delete response:", res);
+
+        this.selectedBudgetPlanIds = [];
+        this.loadDropdowns(); // reload after delete
+      },
+      error: (err) => {
+        console.error("❌ Delete error:", err);
+
+      }
+    });
   }
 }

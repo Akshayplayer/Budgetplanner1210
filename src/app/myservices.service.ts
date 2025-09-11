@@ -23,6 +23,14 @@ export class MyservicesService {
     return this.myhttpclient.put(this.baseUrl+"/Update", data);
   }
 
+  deleteData(id: number) :Observable<any>{
+    return this.myhttpclient.delete(`${this.baseUrl}/DeleteBudget/${id}`);
+  }
+
+  Addupdatenewdata(data: BudgetResource) {
+    return this.myhttpclient.post(this.baseUrl+"/BulkUpsert", data);
+  }
+
   getProjects(): Observable<any> {
     return this.myhttpclient.get<any>(this.baseUrl + "/GetAllProjects");
   }

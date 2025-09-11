@@ -318,22 +318,25 @@ export class BudgetspreadsheetComponent {
   }
 
   onDelete() {
-    if (!this.selectedBudgetPlanIds.length) {
-      alert("⚠️ No rows selected for delete.");
+    console.log("🗑️ Attempting bulk delete. Selected IDs:", this.selectedBudgetPlanIds);
+
+    if (!this.selectedBudgetPlanIds || this.selectedBudgetPlanIds.length === 0) {
+      console.warn("⚠️ No valid BudgetPlanId selected for deletion.");
+      alert("No rows selected for deletion.");
       return;
     }
 
-    const requests = this.selectedBudgetPlanIds.map(id => this.myservice.deleteData(id));
-    forkJoin(requests).subscribe({
+    this.myservice.bulkdelete(this.selectedBudgetPlanIds).subscribe({
       next: () => {
-        alert("✅ Deleted successfully.");
+        alert(`✅ Deleted ${this.selectedBudgetPlanIds.length} rows successfully.`);
         this.selectedBudgetPlanIds = [];
-        this.loadDropdowns();
+        this.loadDropdowns(); // reload fresh data
       },
       error: (err) => {
-        console.error("❌ Delete error:", err);
-        alert("Delete failed.");
+        console.error("❌ Bulk delete error:", err);
+        alert("Bulk delete failed. Please try again.");
       }
     });
   }
+
 }

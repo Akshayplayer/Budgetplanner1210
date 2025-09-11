@@ -27,6 +27,10 @@ export class MyservicesService {
     return this.myhttpclient.delete(`${this.baseUrl}/DeleteBudget/${id}`);
   }
 
+  bulkdelete(data: number[]) {
+    return this.myhttpclient.post(this.baseUrl+"/BulkDelete", data);
+  }
+
   Addupdate(data: BudgetResource[]) {
     return this.myhttpclient.post(this.baseUrl+"/BulkUpsert", data);
   }

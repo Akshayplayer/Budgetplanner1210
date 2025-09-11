@@ -15,19 +15,19 @@ export class MyservicesService {
     return this.myhttpclient.get<BudgetExtends[]>(this.baseUrl + "/GetAllBudget");
   }
 
-  saveData(data: BudgetResource) {
-    return this.myhttpclient.post(this.baseUrl+"/AddBudget", data);
-  }
+  // saveData(data: BudgetResource) {
+  //   return this.myhttpclient.post(this.baseUrl+"/AddBudget", data);
+  // }
 
-  updateData(data: BudgetResource) {
-    return this.myhttpclient.put(this.baseUrl+"/Update", data);
-  }
+  // updateData(data: BudgetResource) {
+  //   return this.myhttpclient.put(this.baseUrl+"/Update", data);
+  // }
 
   deleteData(id: number) :Observable<any>{
     return this.myhttpclient.delete(`${this.baseUrl}/DeleteBudget/${id}`);
   }
 
-  Addupdatenewdata(data: BudgetResource) {
+  Addupdate(data: BudgetResource[]) {
     return this.myhttpclient.post(this.baseUrl+"/BulkUpsert", data);
   }
 

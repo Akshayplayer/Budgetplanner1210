@@ -50,7 +50,8 @@ export class BudgetspreadsheetComponent implements OnInit {
         name: 'Budget',
         rows: [],
         columns: Array(9).fill({ width: 150 }), // 9 visible cols in current model
-        frozenRows: 1 // freeze header row
+        frozenRows: 1, // freeze header row
+        frozenColumns: 1
       }
     ]
   };
@@ -167,7 +168,8 @@ export class BudgetspreadsheetComponent implements OnInit {
           name: 'Budget',
           rows: [headerRow, ...dataRows, ...emptyRows],
           columns: Array(9).fill({ width: 150 }),
-          frozenRows: 1 // keep header frozen
+          frozenRows: 1, // keep header frozen
+          frozenColumns: 1
         }
       ]
     };

@@ -7,14 +7,14 @@ import { CommonModule } from '@angular/common';
 import { ButtonsModule } from '@progress/kendo-angular-buttons';
 import { MyservicesService } from '../myservices.service';
 import { BudgetExtends, BudgetResource } from '../budgetresource';
-import { 
-  SVGIcon, 
-  pencilIcon, 
-  saveIcon, 
-  lockIcon, 
-  trashIcon, 
-  filePdfIcon, 
-  fileExcelIcon 
+import {
+  SVGIcon,
+  pencilIcon,
+  saveIcon,
+  lockIcon,
+  trashIcon,
+  filePdfIcon,
+  fileExcelIcon
 } from '@progress/kendo-svg-icons';
 import { forkJoin, firstValueFrom } from 'rxjs';
 import { WorkbookModel } from '../model';
@@ -233,6 +233,7 @@ export class BudgetspreadsheetComponent {
     const sheet = event.sender.activeSheet();
     if (sheet) {
       this.latestSheetJson = sheet.toJSON();
+      this.validateSheet(sheet);
     }
   }
 
@@ -306,32 +307,32 @@ export class BudgetspreadsheetComponent {
 
 
   /** 🔹 Selection → Collect IDs */
-onSelect(e: any): void {
-  try {
-    const sheet = e.sender.activeSheet();
-    const selection = sheet.selection();
-    if (!selection) return;
+  onSelect(e: any): void {
+    try {
+      const sheet = e.sender.activeSheet();
+      const selection = sheet.selection();
+      if (!selection) return;
 
-    const ranges = selection.ranges || [selection];
-    const ids: number[] = [];
+      const ranges = selection.ranges || [selection];
+      const ids: number[] = [];
 
-    ranges.forEach((range: any) => {
-      const ref = range._ref;
-      if (!ref?.topLeft || !ref?.bottomRight) return;
+      ranges.forEach((range: any) => {
+        const ref = range._ref;
+        if (!ref?.topLeft || !ref?.bottomRight) return;
 
-      for (let r = ref.topLeft.row; r <= ref.bottomRight.row; r++) {
-        if (r === 0) continue; // skip header
-        const id = sheet.range(r, 0).value();
-        if (id) ids.push(Number(id));
-      }
-    });
+        for (let r = ref.topLeft.row; r <= ref.bottomRight.row; r++) {
+          if (r === 0) continue; // skip header
+          const id = sheet.range(r, 0).value();
+          if (id) ids.push(Number(id));
+        }
+      });
 
-    this.selectedBudgetPlanIds = Array.from(new Set(ids));
-    console.log("✅ Selected IDs:", this.selectedBudgetPlanIds);
-  } catch (err) {
-    console.error("❌ onSelect Error:", err);
+      this.selectedBudgetPlanIds = Array.from(new Set(ids));
+      console.log("✅ Selected IDs:", this.selectedBudgetPlanIds);
+    } catch (err) {
+      console.error("❌ onSelect Error:", err);
+    }
   }
-}
 
 
   /** 🔹 Bulk Delete */
@@ -353,8 +354,14 @@ onSelect(e: any): void {
   }
 
   /** 🔹 Helpers */
+  /** 🔹 Helpers */
   private createTextCell(value: any, allowEdit: boolean) {
-    return { value, background: allowEdit ? '#fff' : '#f0f0f0', locked: !allowEdit };
+    return {
+      value,
+      background: allowEdit ? '#fff' : '#f0f0f0',
+      locked: !allowEdit,
+      color: undefined as string | undefined   // 🔹 added for consistency
+    };
   }
 
   private createStatusCell(value: string, list: string[], allowEdit: boolean) {
@@ -363,7 +370,7 @@ onSelect(e: any): void {
 
     switch (value) {
       case 'Planned':
-        background = '#f7be04ff';
+        background = '#edb80cff';
         break;
       case 'Approved':
         background = '#d4edda';
@@ -375,37 +382,39 @@ onSelect(e: any): void {
 
     return allowEdit
       ? {
-          value,
-          background,
-          color,
-          validation: {
-            dataType: 'list',
-            showButton: true,
-            comparerType: 'list',
-            from: `"${list.join(',')}"`,
-            allowNulls: true,
-            type: 'reject'
-          }
+        value,
+        background,
+        color,
+        validation: {
+          dataType: 'list',
+          showButton: true,
+          comparerType: 'list',
+          from: `"${list.join(',')}"`,
+          allowNulls: true,
+          type: 'reject'
         }
+      }
       : { value, background, color, locked: true };
   }
 
   private createDropdownCell(value: any, list: string[], allowEdit: boolean) {
     return allowEdit
       ? {
-          value,
-          background: '#fef0cd',
-          validation: {
-            dataType: 'list',
-            showButton: true,
-            comparerType: 'list',
-            from: `"${list.join(',')}"`,
-            allowNulls: true,
-            type: 'reject',
-          },
-        }
-      : { value, background: '#f0f0f0', locked: true };
+        value,
+        background: '#fef0cd',
+        color: undefined as string | undefined,   // 🔹 added
+        validation: {
+          dataType: 'list',
+          showButton: true,
+          comparerType: 'list',
+          from: `"${list.join(',')}"`,
+          allowNulls: true,
+          type: 'reject',
+        },
+      }
+      : { value, background: '#f0f0f0', locked: true, color: undefined as string | undefined };
   }
+
 
   private getCellValue(cells: any[], index: number): string;
   private getCellValue(cells: any[], index: number, asNumber: true): number;
@@ -424,12 +433,12 @@ onSelect(e: any): void {
     }
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const head = [[
-      'BudgetPlanId','Project','Employee','Month','Status',
-      'Budget Allocated','Hours Planned','Cost','Comments'
+      'BudgetPlanId', 'Project', 'Employee', 'Month', 'Status',
+      'Budget Allocated', 'Hours Planned', 'Cost', 'Comments'
     ]];
     const body = this.budgetPlans.map(p => [
-      p.budgetPlanId,p.projectName,p.employeeName,p.month,p.statusName,
-      p.budgetAllocated,p.hoursPlanned,p.cost,p.comments || ''
+      p.budgetPlanId, p.projectName, p.employeeName, p.month, p.statusName,
+      p.budgetAllocated, p.hoursPlanned, p.cost, p.comments || ''
     ]);
     autoTable(doc, {
       head, body, startY: 20, theme: 'grid',
@@ -450,4 +459,69 @@ onSelect(e: any): void {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'BudgetPlans');
     XLSX.writeFile(workbook, 'BudgetPlans.xlsx');
   }
+
+
+  private validateSheet(sheet: any) {
+    if (!this.latestSheetJson?.rows) return;
+
+    const errors: string[] = [];
+
+    // reset styles before validation
+    this.latestSheetJson.rows.forEach((row: any, rowIndex: number) => {
+      if (rowIndex === 0) return; // skip header
+      row.cells?.forEach((cell: any, colIndex: number) => {
+        if (cell) {
+          // reset background
+          const original = (colIndex === 4)
+            ? this.createStatusCell(cell.value, this.statuses.map(s => s.name), this.isEditable)
+            : this.createTextCell(cell.value, this.isEditable);
+          cell.background = original.background;
+          cell.color = original.color;
+        }
+      });
+    });
+
+    for (let i = 1; i < this.latestSheetJson.rows.length; i++) {
+      const cells = this.latestSheetJson.rows[i]?.cells;
+      if (!cells) continue;
+
+      const month = cells[3]?.value;
+      const status = cells[4]?.value;
+      const budget = Number(cells[5]?.value || 0);
+      const hours = Number(cells[6]?.value || 0);
+      const comments = String(cells[8]?.value || '');
+
+      // Month required
+      // if (!month) {
+      //   errors.push(`Row ${i + 1}: Month is required.`);
+      //   cells[3].background = '#f8d7da';
+      // }
+
+      // Budget must be > 0
+      if (budget < 0) {
+        errors.push(`Row ${i + 1}: Budget must be greater than 0.`);
+        cells[5].background = '#f8d7da';
+      }
+
+      // Hours must be > 0
+      if (hours < 0) {
+        errors.push(`Row ${i + 1}: Hours must be greater than 0.`);
+        cells[6].background = '#f8d7da';
+      }
+
+      // Comments max 200
+      if (comments.length > 200) {
+        errors.push(`Row ${i + 1}: Comments exceed 200 characters.`);
+        cells[8].background = '#f8d7da';
+      }
+    }
+
+    if (errors.length > 0) {
+      alert("Validation Errors:\n" + errors.join("\n"));
+    }
+
+    // re-apply sheet data so styles update
+    sheet.fromJSON(this.latestSheetJson);
+  }
+
 }

@@ -1,24 +1,51 @@
-<div class="spreadsheet-container">
-  <!-- Toolbar -->
-  <div class="toolbar flex gap-2 mb-3">
-    <button kendoButton (click)="toggleEdit()" themeColor="primary" [svgIcon]="isEditable ? lockSvg : editSvg">
-      {{ isEditable ? 'Lock Sheet' : 'Edit Sheet' }}
-    </button>
+<kendo-toolbar class="mb-3">
+  <!-- Lock / Edit -->
+  <kendo-toolbar-button
+    (click)="toggleEdit()"
+    [svgIcon]="isEditable ? lockSvg : editSvg"
+    [text]="isEditable ? 'Lock Sheet' : 'Edit Sheet'">
+  </kendo-toolbar-button>
 
-    <button kendoButton (click)="saveData()" themeColor="success" [svgIcon]="saveSvg" [disabled]="!isEditable">
-      Save Data
-    </button>
+  <!-- Save -->
+  <kendo-toolbar-button
+    (click)="saveData()"
+    [disabled]="!isEditable"
+    themeColor="success"
+    [svgIcon]="saveSvg"
+    text="Save Data">
+  </kendo-toolbar-button>
+<!-- 'base' | 'primary' | 'secondary' | 'tertiary' | 'info' | 'success' | 'warning' | 'error' | 'dark' | 'light' | 'inverse' | 'none'; -->
+  <!-- Delete -->
+  <kendo-toolbar-button
+    (click)="onDelete()"
+    [disabled]="!isEditable || selectedBudgetPlanIds.length === 0"
+    [svgIcon]="deleteSvg"
+    themeColor="warning"
+    text="Delete">
+  </kendo-toolbar-button>
 
-    <!-- Delete rows -->
-    <button kendoButton (click)="onDelete()" themeColor="error" [disabled]="!isEditable">
-      Delete Row(s)
-    </button>
-  </div>
+  <!-- Export PDF -->
+  <kendo-toolbar-button
+    (click)="exportToPDF()"
+    [svgIcon]="pdfSvg"
+    themeColor="primary"
+    text="Export to PDF">
+  </kendo-toolbar-button>
 
-  <!-- Spreadsheet -->
-  <kendo-spreadsheet #spreadsheet [sheets]="workbook.sheets" (change)="onSheetChange($event)"
-    (selectionChange)="onSelect($event)" 
-    style="height: 600px; width: 100%;">
-  </kendo-spreadsheet>
+  <!-- Export Excel -->
+  <kendo-toolbar-button
+    (click)="exportToExcel()"
+    themeColor="info"
+    [svgIcon]="excelSvg"
+    text="Export to Excel">
+  </kendo-toolbar-button>
+</kendo-toolbar>
 
-</div>
+<!-- Spreadsheet -->
+<kendo-spreadsheet
+  #spreadsheet
+  [sheets]="workbook.sheets"
+  (change)="onSheetChange($event)"
+  (selectionChange)="onSelect($event)"
+  style="height: 600px; width: 100%;">
+</kendo-spreadsheet>

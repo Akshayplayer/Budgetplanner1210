@@ -127,7 +127,7 @@ export class BudgetspreadsheetComponent {
           this.createDropdownCell(bp.projectName, this.projects.map(p => p.name), allowEdit),
           this.createDropdownCell(bp.employeeName, this.employees.map(e => e.name), allowEdit),
           this.createDropdownCell(bp.month, this.months.map(m => m.name), allowEdit),
-          this.createDropdownCell(bp.statusName, this.statuses.map(s => s.name), allowEdit),
+          this.createStatusCell(bp.statusName, this.statuses.map(s => s.name), allowEdit),
           this.createTextCell(bp.budgetAllocated, allowEdit),
           this.createTextCell(bp.hoursPlanned, allowEdit),
           { value: bp.cost, enable: false },
@@ -304,6 +304,7 @@ export class BudgetspreadsheetComponent {
     }
   }
 
+
   /** 🔹 Selection → Collect IDs */
 onSelect(e: any): void {
   try {
@@ -359,11 +360,19 @@ onSelect(e: any): void {
   private createStatusCell(value: string, list: string[], allowEdit: boolean) {
     let background = allowEdit ? '#fef0cd' : '#f0f0f0';
     let color: string | undefined;
+
     switch (value) {
-      case 'Planned': background = '#fff3cd'; break;
-      case 'Approved': background = '#d4edda'; break;
-      case 'Over Budget': color = '#dc3545'; break;
+      case 'Planned':
+        background = '#f7be04ff';
+        break;
+      case 'Approved':
+        background = '#d4edda';
+        break;
+      case 'Over Budget':
+        color = '#dc3545';
+        break;
     }
+
     return allowEdit
       ? {
           value,
@@ -375,8 +384,8 @@ onSelect(e: any): void {
             comparerType: 'list',
             from: `"${list.join(',')}"`,
             allowNulls: true,
-            type: 'reject',
-          },
+            type: 'reject'
+          }
         }
       : { value, background, color, locked: true };
   }

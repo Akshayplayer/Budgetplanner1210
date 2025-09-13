@@ -1,51 +1,72 @@
 <kendo-toolbar class="mb-3">
   <!-- Lock / Edit -->
-  <kendo-toolbar-button
-    (click)="toggleEdit()"
+  <kendo-toolbar-button 
+    (click)="toggleEdit()" 
     [svgIcon]="isEditable ? lockSvg : editSvg"
     [text]="isEditable ? 'Lock Sheet' : 'Edit Sheet'">
   </kendo-toolbar-button>
 
   <!-- Save -->
-  <kendo-toolbar-button
-    (click)="saveData()"
-    [disabled]="!isEditable"
-    themeColor="success"
+  <kendo-toolbar-button 
+    (click)="saveData()" 
+    [disabled]="!isEditable" 
+    themeColor="success" 
     [svgIcon]="saveSvg"
     text="Save Data">
   </kendo-toolbar-button>
-<!-- 'base' | 'primary' | 'secondary' | 'tertiary' | 'info' | 'success' | 'warning' | 'error' | 'dark' | 'light' | 'inverse' | 'none'; -->
+
   <!-- Delete -->
-  <kendo-toolbar-button
-    (click)="onDelete()"
+  <kendo-toolbar-button 
+    (click)="onDelete()" 
     [disabled]="!isEditable || selectedBudgetPlanIds.length === 0"
-    [svgIcon]="deleteSvg"
-    themeColor="warning"
+    [svgIcon]="deleteSvg" 
+    themeColor="warning" 
     text="Delete">
   </kendo-toolbar-button>
 
   <!-- Export PDF -->
-  <kendo-toolbar-button
-    (click)="exportToPDF()"
-    [svgIcon]="pdfSvg"
-    themeColor="primary"
+  <kendo-toolbar-button 
+    (click)="exportToPDF()" 
+    [svgIcon]="pdfSvg" 
+    themeColor="primary" 
     text="Export to PDF">
   </kendo-toolbar-button>
 
   <!-- Export Excel -->
-  <kendo-toolbar-button
-    (click)="exportToExcel()"
-    themeColor="info"
-    [svgIcon]="excelSvg"
+  <kendo-toolbar-button 
+    (click)="exportToExcel()" 
+    themeColor="info" 
+    [svgIcon]="excelSvg" 
     text="Export to Excel">
+  </kendo-toolbar-button>
+
+  <!-- Import Excel -->
+  <kendo-toolbar-button 
+    (click)="excelInput.click()" 
+    themeColor="secondary" 
+    [svgIcon]="excelSvg" 
+    text="Import Excel">
+  </kendo-toolbar-button>
+  <input 
+    type="file" 
+    #excelInput 
+    (change)="onExcelUpload($event)" 
+    accept=".xlsx,.xls" 
+    hidden />
+
+  <!-- Process Excel Data -->
+  <kendo-toolbar-button 
+    (click)="processExcelData()" 
+    themeColor="primary" 
+    text="Process Imported Data">
   </kendo-toolbar-button>
 </kendo-toolbar>
 
 <!-- Spreadsheet -->
-<kendo-spreadsheet
-  #spreadsheet
-  [sheets]="workbook.sheets"
+<kendo-spreadsheet 
+  #spreadsheet 
+  [sheets]="workbook.sheets" 
   (change)="onSheetChange($event)"
-  (selectionChange)="onSelect($event)"
+  (selectionChange)="onSelect($event)" 
   style="height: 600px; width: 100%;">
 </kendo-spreadsheet>

@@ -1,0 +1,58 @@
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  background: #f5f7fa;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+/* App Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 50vh;
+}
+
+.app-header {
+  background: linear-gradient(90deg, #1976d2, #42a5f5);
+  color: #fff;
+  padding: 1rem 1rem;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.app-header h1 {
+  font-size: 1.8rem;
+  font-weight: 1200;
+}
+
+.app-toolbar {
+  padding: 0.5rem 1rem;
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 2000px;
+  margin: 0;
+}
+
+.app-footer {
+  background: #2c3e50;
+  color: #bdc3c7;
+  padding: 0.8rem;
+  text-align: center;
+  font-size: 0.9rem;
+}

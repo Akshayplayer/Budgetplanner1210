@@ -1,16 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EmployeeBudget</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Employee Budget</title>
 </head>
 <body>
-    <h1>Hello, EmployeeBudget</h1>
-    <kendo-toolbar>
-    <kendo-toolbar-button text="Button" routerLink="/spreadsheet" ></kendo-toolbar-button>
-    <!--...-->
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>💼 Employee Budget Manager</h1>
+    </header>
+
+    <!-- Toolbar -->
+    <kendo-toolbar class="app-toolbar">
+      <kendo-toolbar-button
+        text="Spreadsheet"
+        themeColor="primary"
+        [svgIcon]="tableSvg"
+        routerLink="/spreadsheet">
+      </kendo-toolbar-button>
+
+      <kendo-toolbar-button
+        text="Reports"
+        themeColor="info"
+        [svgIcon]="caretSvg"
+        routerLink="/reports">
+      </kendo-toolbar-button>
+
+      <kendo-toolbar-button
+        text="Settings"
+        themeColor="secondary"
+        routerLink="/settings">
+      </kendo-toolbar-button>
     </kendo-toolbar>
-    <router-outlet></router-outlet>
+
+    <!-- Main Content -->
+    <main class="app-main">
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>© 2025 Employee Budget System • Powered by Kendo Angular</p>
+    </footer>
+  </div>
 </body>
 </html>

@@ -5,6 +5,8 @@ import '@angular/localize/init';
 import { SpreadsheetModule } from '@progress/kendo-angular-spreadsheet';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { SVGIcon, tableIcon, caretBrIcon } from '@progress/kendo-svg-icons';
+
 
 @Component({
   selector: 'app-root',
@@ -15,4 +17,9 @@ import { HttpClient } from '@angular/common/http';
 })
 export class AppComponent {
   title = 'Emp_Budget';//adding fines to track changes
+  // icons
+  public tableSvg: SVGIcon = tableIcon;
+  public caretSvg: SVGIcon = caretBrIcon;
+  // public cogSvg: SVGIcon = cogIcon;
+
 }

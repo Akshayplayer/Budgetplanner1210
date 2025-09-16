@@ -114,8 +114,8 @@ export class BudgetspreadsheetComponent {
         { value: 'Status', bold: true },
         { value: 'Budget Allocated', bold: true },
         { value: 'Hours Planned', bold: true },
-        { value: 'Cost', bold: true },
         { value: 'Comments', bold: true },
+        { value: 'Cost', bold: true },
       ],
     };
 
@@ -130,13 +130,14 @@ export class BudgetspreadsheetComponent {
           this.createStatusCell(bp.statusName, this.statuses.map(s => s.name), allowEdit),
           this.createTextCell(bp.budgetAllocated, allowEdit),
           this.createTextCell(bp.hoursPlanned, allowEdit),
-          { value: bp.cost, enable: false },
+          
           this.createTextCell(bp.comments, allowEdit),
+          { value: bp.cost, enable: false },
         ],
       };
     });
 
-    const emptyRows = Array.from({ length: 200 }).map(() => ({
+    const emptyRows = Array.from({ length: 1000 }).map(() => ({
       cells: [
         { value: '', enable: false },
         this.createDropdownCell('', this.projects.map(p => p.name), true),
@@ -145,8 +146,9 @@ export class BudgetspreadsheetComponent {
         this.createStatusCell('', this.statuses.map(s => s.name), true),
         this.createTextCell('', true),
         this.createTextCell('', true),
-        { value: '', enable: false },
+        
         this.createTextCell('', true),
+        { value: '', enable: false },
       ],
     }));
 
@@ -256,7 +258,7 @@ export class BudgetspreadsheetComponent {
       const statusName = this.getCellValue(cells, 4);
       const budgetAllocated = this.getCellValue(cells, 5, true);
       const hoursPlanned = this.getCellValue(cells, 6, true);
-      const comments = this.getCellValue(cells, 8);
+      const comments = this.getCellValue(cells, 7);
 
       if (!projectName && !employeeName && !monthName && !statusName && !budgetAllocated && !hoursPlanned && !comments) {
         continue;
@@ -434,11 +436,11 @@ export class BudgetspreadsheetComponent {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const head = [[
       'BudgetPlanId', 'Project', 'Employee', 'Month', 'Status',
-      'Budget Allocated', 'Hours Planned', 'Cost', 'Comments'
+      'Budget Allocated', 'Hours Planned', 'Comments','Cost'
     ]];
     const body = this.budgetPlans.map(p => [
       p.budgetPlanId, p.projectName, p.employeeName, p.month, p.statusName,
-      p.budgetAllocated, p.hoursPlanned, p.cost, p.comments || ''
+      p.budgetAllocated, p.hoursPlanned, p.comments || '', p.cost
     ]);
     autoTable(doc, {
       head, body, startY: 20, theme: 'grid',
@@ -489,7 +491,7 @@ export class BudgetspreadsheetComponent {
       const status = cells[4]?.value;
       const budget = Number(cells[5]?.value || 0);
       const hours = Number(cells[6]?.value || 0);
-      const comments = String(cells[8]?.value || '');
+      const comments = String(cells[7]?.value || '');
 
       // Month required
       // if (!month) {
@@ -512,7 +514,7 @@ export class BudgetspreadsheetComponent {
       // Comments max 200
       if (comments.length > 200) {
         errors.push(`Row ${i + 1}: Comments exceed 200 characters.`);
-        cells[8].background = '#f8d7da';
+        cells[7].background = '#f8d7da';
       }
     }
 

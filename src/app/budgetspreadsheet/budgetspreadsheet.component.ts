@@ -39,6 +39,8 @@ export class BudgetspreadsheetComponent {
         name: 'Budget',
         rows: [],
         columns: Array(10).fill({ width: 150 }),
+        frozenRows: 1,
+        frozenColumns: 1
       },
     ],
   };
@@ -130,7 +132,6 @@ export class BudgetspreadsheetComponent {
           this.createStatusCell(bp.statusName, this.statuses.map(s => s.name), allowEdit),
           this.createTextCell(bp.budgetAllocated, allowEdit),
           this.createTextCell(bp.hoursPlanned, allowEdit),
-          
           this.createTextCell(bp.comments, allowEdit),
           { value: bp.cost, enable: false },
         ],
@@ -146,7 +147,6 @@ export class BudgetspreadsheetComponent {
         this.createStatusCell('', this.statuses.map(s => s.name), true),
         this.createTextCell('', true),
         this.createTextCell('', true),
-        
         this.createTextCell('', true),
         { value: '', enable: false },
       ],
@@ -158,6 +158,8 @@ export class BudgetspreadsheetComponent {
           name: 'Budget',
           rows: [headerRow, ...dataRows, ...emptyRows],
           columns: Array(10).fill({ width: 150 }),
+          frozenRows: 1, // keep header frozen
+          frozenColumns: 1
         },
       ],
     };

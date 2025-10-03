@@ -1,72 +1,106 @@
 <kendo-toolbar class="mb-3">
   <!-- Lock / Edit -->
-  <kendo-toolbar-button 
-    (click)="toggleEdit()" 
-    [svgIcon]="isEditable ? lockSvg : editSvg"
+  <kendo-toolbar-button (click)="toggleEdit()" [svgIcon]="isEditable ? lockSvg : editSvg"
     [text]="isEditable ? 'Lock Sheet' : 'Edit Sheet'">
   </kendo-toolbar-button>
 
   <!-- Save -->
-  <kendo-toolbar-button 
-    (click)="saveData()" 
-    [disabled]="!isEditable" 
-    themeColor="success" 
-    [svgIcon]="saveSvg"
+  <kendo-toolbar-button (click)="saveData()" [disabled]="!isEditable" themeColor="success" [svgIcon]="saveSvg"
     text="Save Data">
   </kendo-toolbar-button>
 
-  <!-- Delete -->
-  <kendo-toolbar-button 
-    (click)="onDelete()" 
-    [disabled]="!isEditable || selectedBudgetPlanIds.length === 0"
-    [svgIcon]="deleteSvg" 
-    themeColor="warning" 
-    text="Delete">
-  </kendo-toolbar-button>
+    <!-- Delete -->
+    <kendo-toolbar-button (click)="onDelete()" [disabled]="!isEditable || selectedBudgetPlanIds.length === 0"
+      [svgIcon]="deleteSvg" themeColor="warning" text="Delete">
+    </kendo-toolbar-button>
 
-  <!-- Export PDF -->
-  <kendo-toolbar-button 
-    (click)="exportToPDF()" 
-    [svgIcon]="pdfSvg" 
-    themeColor="primary" 
-    text="Export to PDF">
-  </kendo-toolbar-button>
+    <!-- Export PDF -->
+    <kendo-toolbar-button (click)="exportToPDF()" [svgIcon]="pdfSvg" themeColor="primary" text="Export to PDF">
+    </kendo-toolbar-button>
 
-  <!-- Export Excel -->
-  <kendo-toolbar-button 
-    (click)="exportToExcel()" 
-    themeColor="info" 
-    [svgIcon]="excelSvg" 
-    text="Export to Excel">
-  </kendo-toolbar-button>
+    <!-- Export Excel -->
+    <kendo-toolbar-button (click)="exportToExcel()" themeColor="info" [svgIcon]="excelSvg" text="Export to Excel">
+    </kendo-toolbar-button>
 
   <!-- Import Excel -->
-  <kendo-toolbar-button 
-    (click)="excelInput.click()" 
-    themeColor="secondary" 
-    [svgIcon]="excelSvg" 
-    text="Import Excel">
+  <kendo-toolbar-button (click)="excelInput.click()" themeColor="secondary" [svgIcon]="excelSvg" text="Import Excel">
   </kendo-toolbar-button>
-  <input 
-    type="file" 
-    #excelInput 
-    (change)="onExcelUpload($event)" 
-    accept=".xlsx,.xls" 
-    hidden />
+  <input type="file" #excelInput (change)="onExcelUpload($event)" accept=".xlsx,.xls" hidden />
 
   <!-- Process Excel Data -->
-  <kendo-toolbar-button 
-    (click)="processExcelData()" 
-    themeColor="primary" 
-    text="Process Imported Data">
+  <kendo-toolbar-button (click)="processExcelData()" themeColor="primary" text="Process Imported Data">
   </kendo-toolbar-button>
 </kendo-toolbar>
 
-<!-- Spreadsheet -->
-<kendo-spreadsheet 
-  #spreadsheet 
-  [sheets]="workbook.sheets" 
-  (change)="onSheetChange($event)"
-  (selectionChange)="onSelect($event)" 
-  style="height: 600px; width: 100%;">
+<!-- 🔹 Filters Section -->
+<div class="p-3 border rounded mb-3 bg-light">
+  <div class="row g-2">
+    <!-- Search -->
+    <div class="col-md-3">
+      <input kendoTextBox placeholder="Search..." [(ngModel)]="searchText" (ngModelChange)="onFilterChange()" />
+    </div>
+
+    <!-- Projects -->
+    <div class="col-md-3">
+      <kendo-multiselect [data]="projects" textField="name" valueField="id" [valuePrimitive]="true" [(ngModel)]="selectedProjects"
+        (ngModelChange)="onFilterChange()" placeholder="Select Projects">
+      </kendo-multiselect>
+    </div>
+
+    <!-- Employees -->
+    <div class="col-md-3">
+      <kendo-multiselect [data]="employees" textField="name" valueField="id" [valuePrimitive]="true" [(ngModel)]="selectedEmployees"
+        (ngModelChange)="onFilterChange()" placeholder="Select Employees">
+      </kendo-multiselect>
+    </div>
+
+    <!-- Months -->
+    <div class="col-md-3">
+      <kendo-multiselect [data]="months" textField="name" valueField="id" [valuePrimitive]="true" [(ngModel)]="selectedMonths"
+        (ngModelChange)="onFilterChange()" placeholder="Select Months">
+      </kendo-multiselect>
+    </div>
+
+    <!-- Status -->
+    <div class="col-md-3">
+      <kendo-multiselect [data]="statuses" textField="name" valueField="id" [valuePrimitive]="true" [(ngModel)]="selectedStatuses"
+        (ngModelChange)="onFilterChange()" placeholder="Select Status">
+      </kendo-multiselect>
+    </div>
+
+    <!-- Budget range inputs -->
+    <input kendoTextBox type="number" placeholder="Min Budget" [(ngModel)]="minBudget"
+      (ngModelChange)="onFilterChange()" />
+    <input kendoTextBox type="number" placeholder="Max Budget" [(ngModel)]="maxBudget"
+      (ngModelChange)="onFilterChange()" />
+
+    <!-- Hours range -->
+    <input kendoTextBox type="number" placeholder="Min Hours" [(ngModel)]="minHours"
+      (ngModelChange)="onFilterChange()" />
+    <input kendoTextBox type="number" placeholder="Max Hours" [(ngModel)]="maxHours"
+      (ngModelChange)="onFilterChange()" />
+
+    <!-- Page size -->
+    <select class="form-select me-1" [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange($event)">
+      <option [ngValue]="5">5</option>
+      <option [ngValue]="10">10</option>
+      <option [ngValue]="20">20</option>
+      <option [ngValue]="50">50</option>
+    </select>
+
+    <!-- Page number -->
+    <input kendoTextBox type="number" placeholder="Page Number" [(ngModel)]="pageNumber"
+      (ngModelChange)="onPageChange($event)" />
+
+  </div>
+
+  <!-- Apply Button -->
+  <div class="col-md-3 d-flex align-items-center">
+    <button kendoButton themeColor="primary" (click)="Onclick()">Apply Filters</button>
+  </div>
+</div>
+
+<!-- 🔹 Spreadsheet -->
+<kendo-spreadsheet #spreadsheet [sheets]="workbook.sheets" (change)="onSheetChange($event)"
+  (selectionChange)="onSelect($event)" style="height: 600px; width: 100%;">
 </kendo-spreadsheet>

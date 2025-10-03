@@ -22,11 +22,16 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ToolBarModule } from '@progress/kendo-angular-toolbar';
 import * as XLSX from 'xlsx';
+import { BudgetPlanResponse } from '../BudgetPlanResponse';
+import { FormsModule } from '@angular/forms';
+import { MultiSelectModule } from '@progress/kendo-angular-dropdowns';
+import { BudgetPlanFilter } from '../BudgetPlanFilter';
+
 
 @Component({
   selector: 'app-budgetspreadsheet',
   standalone: true,
-  imports: [SpreadsheetModule, CommonModule, ButtonsModule, ToolBarModule],
+  imports: [SpreadsheetModule, CommonModule, ButtonsModule, ToolBarModule, FormsModule, MultiSelectModule],
   templateUrl: './budgetspreadsheet.component.html',
   styleUrls: ['./budgetspreadsheet.component.scss']
 })
@@ -45,6 +50,25 @@ export class BudgetspreadsheetComponent {
     ],
   };
 
+  budgetPlansResponse: BudgetPlanResponse = { data: [], totalCount: 0 };
+
+  // Filters
+  selectedProjects: number[] = [];
+  selectedEmployees: number[] = [];
+  selectedMonths: number[] = [];
+  selectedStatuses: number[] = [];
+  searchText: string = '';
+  minBudget?: number;
+  maxBudget?: number;
+  minHours?: number;
+  maxHours?: number;
+
+  // Paging + Sorting
+  pageNumber: number = 1;
+  pageSize: number = 10;
+  sortColumn: string = 'ProjectName';
+  sortDirection: string = 'ASC';
+
   // icons
   public editSvg: SVGIcon = pencilIcon;
   public saveSvg: SVGIcon = saveIcon;
@@ -59,8 +83,9 @@ export class BudgetspreadsheetComponent {
   projects: { id: number; name: string }[] = [];
   employees: { id: number; name: string }[] = [];
 
+
   // main data
-  budgetPlans: BudgetExtends[] = [];
+  // budgetPlans: BudgetExtends[] = [];
 
   // state
   isEditable = true;
@@ -72,39 +97,110 @@ export class BudgetspreadsheetComponent {
 
   constructor(private myservice: MyservicesService, private cdr: ChangeDetectorRef) { }
 
-  async ngOnInit(): Promise<void> {
-    await this.loadDropdowns();
+  ngOnInit(): void {
+    this.loadDropdowns();
+    this.loadBudgetPlans();
   }
+
 
   /** 🔹 Load dropdowns + existing plans */
   private async loadDropdowns() {
     try {
-      const { projects, employees, months, statuses, data } = await firstValueFrom(
+      const { projects, employees, months, statuses } = await firstValueFrom(
         forkJoin({
           projects: this.myservice.getProjects(),
           employees: this.myservice.getEmployees(),
           months: this.myservice.getMonths(),
           statuses: this.myservice.getStatuses(),
-          data: this.myservice.getdata()
         })
       );
       this.projects = projects;
       this.employees = employees;
       this.months = months;
       this.statuses = statuses;
-      this.budgetPlans = data;
-      this.setupSpreadsheet(this.budgetPlans);
     } catch (err) {
-      console.error("❌ Error loading dropdowns/data:", err);
+      console.error("❌ Error loading dropdowns:", err);
     }
   }
 
-  toggleEdit() {
-    this.isEditable = !this.isEditable;
-    this.setupSpreadsheet(this.budgetPlans);
+  async Onclick() {
+    await this.loadBudgetPlans();
+    await this.loadDropdowns();
+    await this.setupSpreadsheet(this.budgetPlansResponse.data);
   }
 
-  /** 🔹 Build spreadsheet structure */
+
+  // Main loader
+  /** 🔹 Load plans with filters, paging & sorting */
+  loadBudgetPlans(): void {
+    const filter: BudgetPlanFilter = {
+      PageNumber: this.pageNumber,
+      PageSize: this.pageSize,
+      SortColumn: this.sortColumn,
+      SortDirection: this.sortDirection,
+      Search: this.searchText,
+      ProjectIds: this.selectedProjects,
+      EmployeeIds: this.selectedEmployees,
+      MonthIds: this.selectedMonths,
+      StatusIds: this.selectedStatuses,
+      BudgetMin: this.minBudget,
+      BudgetMax: this.maxBudget,
+      HoursMin: this.minHours,
+      HoursMax: this.maxHours,
+    };
+    console.log(filter);
+
+    this.myservice.getBudgetPlans(filter).subscribe({
+      next: (res: BudgetPlanResponse) => {
+        this.budgetPlansResponse = res;
+        this.setupSpreadsheet(res.data);
+      },
+      error: (err) => console.error("❌ Error loading budget plans:", err)
+    });
+  }
+  // Auto-update filters
+  onFilterChange(): void {
+    this.pageNumber = 1; // reset to first page whenever filter changes
+    this.loadBudgetPlans();
+  }
+
+  // Paging
+  onPageChange(newPage: number): void {
+    this.pageNumber = newPage;
+    this.loadBudgetPlans();
+  }
+
+  onPageSizeChange(newSize: number): void {
+    this.pageSize = newSize;
+    this.pageNumber = 1; // reset to first page
+    this.loadBudgetPlans();
+  }
+
+  // Sorting
+  onSort(column: string): void {
+    if (this.sortColumn === column) {
+      this.sortDirection = this.sortDirection === 'ASC' ? 'DESC' : 'ASC';
+    } else {
+      this.sortColumn = column;
+      this.sortDirection = 'ASC';
+    }
+    this.loadBudgetPlans();
+  }
+
+  onSortInputChange(): void {
+    this.pageNumber = 1;
+    this.loadBudgetPlans();
+  }
+
+
+
+
+  toggleEdit() {
+    this.isEditable = !this.isEditable;
+    this.setupSpreadsheet(this.budgetPlansResponse.data);
+  }
+
+  /** 🔹 Spreadsheet builder */
   private setupSpreadsheet(budgetPlans: BudgetExtends[]) {
     const headerRow = {
       type: 'header',
@@ -121,34 +217,32 @@ export class BudgetspreadsheetComponent {
       ],
     };
 
-    const dataRows = budgetPlans.map((bp) => {
-      const allowEdit = this.isEditable;
-      return {
-        cells: [
-          { value: bp.budgetPlanId, enable: false },
-          this.createDropdownCell(bp.projectName, this.projects.map(p => p.name), allowEdit),
-          this.createDropdownCell(bp.employeeName, this.employees.map(e => e.name), allowEdit),
-          this.createDropdownCell(bp.month, this.months.map(m => m.name), allowEdit),
-          this.createStatusCell(bp.statusName, this.statuses.map(s => s.name), allowEdit),
-          this.createTextCell(bp.budgetAllocated, allowEdit),
-          this.createTextCell(bp.hoursPlanned, allowEdit),
-          this.createTextCell(bp.comments, allowEdit),
-          { value: bp.cost, enable: false },
-        ],
-      };
-    });
-
-    const emptyRows = Array.from({ length: 1000 }).map(() => ({
+    const dataRows = (budgetPlans || []).map((bp) => ({
       cells: [
-        { value: '', enable: false },
-        this.createDropdownCell('', this.projects.map(p => p.name), true),
-        this.createDropdownCell('', this.employees.map(e => e.name), true),
-        this.createDropdownCell('', this.months.map(m => m.name), true),
-        this.createStatusCell('', this.statuses.map(s => s.name), true),
+        { value: bp.budgetPlanId, enable: false, locked: true, background: '#f0f0f0' },
+        this.createDropdownCell(bp.projectName, this.projects.map((p) => p.name), this.isEditable),
+        this.createDropdownCell(bp.employeeName, this.employees.map((e) => e.name), this.isEditable),
+        this.createDropdownCell(bp.month, this.months.map((m) => m.name), this.isEditable),
+        this.createStatusCell(bp.statusName, this.statuses.map((s) => s.name), this.isEditable),
+        this.createTextCell(bp.budgetAllocated, this.isEditable),
+        this.createTextCell(bp.hoursPlanned, this.isEditable),
+        this.createTextCell(bp.comments, this.isEditable),
+        { value: bp.cost, enable: false, locked: true, background: '#f0f0f0' },
+      ],
+    }));
+
+    // 🔹 Add 10 empty editable rows to allow adding new entries
+    const emptyRows = Array.from({ length: 10 }).map(() => ({
+      cells: [
+        { value: '', enable: false, locked: true, background: '#f0f0f0' },
+        this.createDropdownCell('', this.projects.map((p) => p.name), true),
+        this.createDropdownCell('', this.employees.map((e) => e.name), true),
+        this.createDropdownCell('', this.months.map((m) => m.name), true),
+        this.createStatusCell('', this.statuses.map((s) => s.name), true),
         this.createTextCell('', true),
         this.createTextCell('', true),
         this.createTextCell('', true),
-        { value: '', enable: false },
+        { value: '', enable: false, locked: true, background: '#f0f0f0' },
       ],
     }));
 
@@ -156,14 +250,18 @@ export class BudgetspreadsheetComponent {
       sheets: [
         {
           name: 'Budget',
-          rows: [headerRow, ...dataRows, ...emptyRows],
+          rows: [
+            headerRow,
+            ...dataRows,
+            ...emptyRows,
+          ],
           columns: Array(10).fill({ width: 150 }),
-          frozenRows: 1, // keep header frozen
-          frozenColumns: 1
+          frozenRows: 1,
+          frozenColumns: 1,
         },
       ],
     };
-
+    
     this.cdr.detectChanges();
   }
 
@@ -349,6 +447,7 @@ export class BudgetspreadsheetComponent {
     try {
       await firstValueFrom(this.myservice.bulkdelete(this.selectedBudgetPlanIds));
       alert(`✅ Deleted ${this.selectedBudgetPlanIds.length} rows.`);
+      this.loadBudgetPlans();   // 🔹 refresh sheet data
       this.selectedBudgetPlanIds = [];
       this.loadDropdowns();
     } catch (err) {
@@ -431,16 +530,16 @@ export class BudgetspreadsheetComponent {
 
   /** 🔹 Export PDF */
   exportToPDF() {
-    if (!this.budgetPlans || this.budgetPlans.length === 0) {
+    if (!this.budgetPlansResponse.data || this.budgetPlansResponse.data.length === 0) {
       alert("⚠️ No data available to export.");
       return;
     }
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const head = [[
       'BudgetPlanId', 'Project', 'Employee', 'Month', 'Status',
-      'Budget Allocated', 'Hours Planned', 'Comments','Cost'
+      'Budget Allocated', 'Hours Planned', 'Comments', 'Cost'
     ]];
-    const body = this.budgetPlans.map(p => [
+    const body = this.budgetPlansResponse.data.map(p => [
       p.budgetPlanId, p.projectName, p.employeeName, p.month, p.statusName,
       p.budgetAllocated, p.hoursPlanned, p.comments || '', p.cost
     ]);
@@ -454,11 +553,11 @@ export class BudgetspreadsheetComponent {
 
   /** 🔹 Export Excel */
   exportToExcel() {
-    if (!this.budgetPlans || this.budgetPlans.length === 0) {
+    if (!this.budgetPlansResponse.data || this.budgetPlansResponse.data.length === 0) {
       alert("⚠️ No data available to export.");
       return;
     }
-    const worksheet = XLSX.utils.json_to_sheet(this.budgetPlans);
+    const worksheet = XLSX.utils.json_to_sheet(this.budgetPlansResponse.data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'BudgetPlans');
     XLSX.writeFile(workbook, 'BudgetPlans.xlsx');

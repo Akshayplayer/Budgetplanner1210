@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { environment } from '../../src/app/environments/environment';
 import { Observable } from 'rxjs';
 import { BudgetExtends, BudgetResource } from './budgetresource';
+import { BudgetPlanResponse } from './BudgetPlanResponse';
+import { BudgetPlanFilter } from './BudgetPlanFilter';
 @Injectable({
   providedIn: 'root'
 })
@@ -23,16 +25,16 @@ export class MyservicesService {
   //   return this.myhttpclient.put(this.baseUrl+"/Update", data);
   // }
 
-  deleteData(id: number) :Observable<any>{
+  deleteData(id: number): Observable<any> {
     return this.myhttpclient.delete(`${this.baseUrl}/DeleteBudget/${id}`);
   }
 
   bulkdelete(data: number[]) {
-    return this.myhttpclient.post(this.baseUrl+"/BulkDelete", data);
+    return this.myhttpclient.post(this.baseUrl + "/BulkDelete", data);
   }
 
   Addupdate(data: BudgetResource[]) {
-    return this.myhttpclient.post(this.baseUrl+"/BulkUpsert", data);
+    return this.myhttpclient.post(this.baseUrl + "/BulkUpsert", data);
   }
 
   getProjects(): Observable<any> {
@@ -51,4 +53,10 @@ export class MyservicesService {
     return this.myhttpclient.get<any>(this.baseUrl + "/GetAllStatus");
   }
 
-}
+  getBudgetPlans(filter: BudgetPlanFilter) {
+    return this.myhttpclient.post<BudgetPlanResponse>(`${this.baseUrl}/budget-plans`, filter);
+  }
+
+
+
+} 

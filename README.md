@@ -62,7 +62,7 @@ workbook: WorkbookModel = {
 - `onSelect()` - Cell/range selection handling
 - `activeSheet()` - Active sheet management
 - `selection()` - Selection range detection
-- `toJSON()` - Sheet data serialization
+- `toJSON()` - Sheet data serialization(The process of changing a complex data structure or an object into a stream of bytes that can be saved to disk, a database, or sent across a network.)
 - `fromJSON()` - Sheet data restoration
 
 ### 2. Advanced Data Validation

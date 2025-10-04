@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Backend API Test</h1>
+    <button onclick="testAPI()">Test API Connection</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            const apiUrl = 'https://localhost:7189/api/Budget/budget-plans';
+            
+            resultDiv.innerHTML = '<p>Testing API connection...</p>';
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        PageNumber: 1,
+                        PageSize: 10,
+                        SortColumn: 'ProjectName',
+                        SortDirection: 'ASC'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <p style="color: green;">✅ API Connection Successful!</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p style="color: red;">❌ API Error: ${response.status} ${response.statusText}</p>
+                        <p>Response: ${await response.text()}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p style="color: red;">❌ Connection Error:</p>
+                    <p>${error.message}</p>
+                    <p><strong>Possible issues:</strong></p>
+                    <ul>
+                        <li>Backend server is not running</li>
+                        <li>CORS issues</li>
+                        <li>Wrong API URL</li>
+                        <li>SSL certificate issues (if using HTTPS)</li>
+                    </ul>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
